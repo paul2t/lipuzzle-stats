@@ -42,6 +42,7 @@ fn main() {
     let mut total_attempts: u64 = 0;
     let mut buckets = Vec::<Bucket>::new();
     let bucket_range = 100;
+    let mut ten_highest_rated = Vec::<PuzzleEntry>::new();
     let mut highest_rated = PuzzleEntry::default();
     let mut lowest_rated = PuzzleEntry {
         rating: u64::MAX,
@@ -145,11 +146,20 @@ fn main() {
             least_played = record.clone();
         }
 
-        if record.rating >= 3100 {
-            println!(
-                "[{}] {} / rating: {} / attempts: {} / deviation: {}",
-                count, record.id, record.rating, record.attempts, record.rating_deviation
-            );
+        let mut insert_index: Option<usize> = None;
+        for (pi, p) in ten_highest_rated.iter().enumerate() {
+            if p.rating < rating {
+                insert_index = Some(pi);
+                break;
+            }
+        }
+        if let Some(pi) = insert_index {
+            if ten_highest_rated.len() > 10 {
+                ten_highest_rated.pop();
+            }
+            ten_highest_rated.insert(pi, record.clone());
+        } else if ten_highest_rated.len() < 10 {
+            ten_highest_rated.push(record.clone());
         }
 
         count += 1;
@@ -190,11 +200,18 @@ fn main() {
         "Least played: {} {} {}",
         least_played.id, least_played.rating, least_played.attempts
     );
+    println!("10 Highest rated:");
+    for p in ten_highest_rated {
+        println!(
+            "{} / rating: {} / attempts: {} / deviation: {}",
+            p.id, p.rating, p.attempts, p.rating_deviation
+        );
+    }
 
     println!("Buckets");
     let mut all_zeros = true;
     println!("rating, count, attempts, deviation, attempts/puzzle, deviation/puzzle");
-    for (bi, b) in buckets.into_iter().enumerate() {
+    for (bi, b) in buckets.iter().enumerate() {
         if all_zeros && b.count == 0 {
             continue;
         }
