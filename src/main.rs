@@ -12,16 +12,10 @@ use std::io::{self, BufRead, BufReader};
 #[derive(Deserialize, Default, Clone)]
 struct PuzzleEntry {
     id: String,
-    _fen: String,
-    _moves: String,
     rating: u64,
     rating_deviation: u64,
     popularity: i64,
     attempts: u64,
-    _themes: String,
-    _url: String,
-    _opening_family: String,
-    _opening_variation: String,
 }
 
 #[derive(Clone, Default)]
@@ -73,16 +67,6 @@ fn main() {
         } else {
             String::new()
         };
-        let _fen = if chunks.len() > 1 {
-            chunks[1].to_string()
-        } else {
-            String::new()
-        };
-        let _moves = if chunks.len() > 2 {
-            chunks[2].to_string()
-        } else {
-            String::new()
-        };
         let rating = if chunks.len() > 3 {
             chunks[3].parse::<u64>().unwrap_or(0)
         } else {
@@ -107,39 +91,13 @@ fn main() {
         } else {
             0
         };
-        let _themes = if chunks.len() > 7 {
-            chunks[7].to_string()
-        } else {
-            String::new()
-        };
-        let _url = if chunks.len() > 8 {
-            chunks[8].to_string()
-        } else {
-            String::new()
-        };
-        let _opening_family = if chunks.len() > 9 {
-            chunks[9].to_string()
-        } else {
-            String::new()
-        };
-        let _opening_variation = if chunks.len() > 10 {
-            chunks[10].to_string()
-        } else {
-            String::new()
-        };
 
         let record = PuzzleEntry {
             id,
-            _fen,
-            _moves,
             rating,
             rating_deviation,
             popularity,
             attempts,
-            _themes,
-            _url,
-            _opening_family,
-            _opening_variation,
         };
 
         total_ratings += record.rating;
