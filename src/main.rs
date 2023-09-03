@@ -1,6 +1,5 @@
 #![allow(unused_imports)]
 
-extern crate csv;
 extern crate serde;
 
 use std::error::Error;
@@ -34,7 +33,6 @@ struct Bucket {
 
 fn main() {
 
-    // let mut rdr = csv::ReaderBuilder::new().has_headers(false).flexible(true).from_reader(io::stdin());
     let mut count = 0;
     let mut total_ratings : u64 = 0;
     let mut total_attempts : u64 = 0;
@@ -49,9 +47,6 @@ fn main() {
     let mut least_played: PuzzleEntry = PuzzleEntry::default();
     least_played.attempts = u64::MAX;
 
-    //for line in rdr.records() {
-        //let line = line.unwrap();
-        // let record: PuzzleEntry = line.deserialize(None).unwrap();
     for line in std::io::stdin().lines() {
         let line = line.unwrap();
         let chunks : Vec::<&str> = line.split(",").collect();
