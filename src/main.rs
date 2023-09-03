@@ -3,9 +3,11 @@
 extern crate serde;
 
 use serde::Deserialize;
+use std::cmp::Ordering;
 use std::env;
 use std::error::Error;
-use std::io;
+use std::fs::File;
+use std::io::{self, BufRead, BufReader};
 
 #[derive(Deserialize, Default, Clone)]
 struct PuzzleEntry {
@@ -31,6 +33,16 @@ struct Bucket {
 }
 
 fn main() {
+    let args: Vec<String> = env::args().collect();
+    if args.len() < 2 {
+        eprintln!("Usage: {} <FILEPATH>", args[0]);
+        return;
+    }
+
+    let path = &args[1];
+    let f = File::open(path).unwrap();
+    let reader = BufReader::new(f);
+
     let mut count = 0;
     let mut total_ratings: u64 = 0;
     let mut total_attempts: u64 = 0;
@@ -41,6 +53,8 @@ fn main() {
         rating: u64::MAX,
         ..Default::default()
     };
+    let mut highest_count: u64 = 0;
+    let mut lowest_count: u64 = 0;
     let mut least_popular = PuzzleEntry {
         popularity: i64::MAX,
         ..Default::default()
@@ -51,7 +65,7 @@ fn main() {
         ..Default::default()
     };
 
-    for line in std::io::stdin().lines() {
+    for line in reader.lines().skip(1) {
         let line = line.unwrap();
         let chunks: Vec<&str> = line.split(',').collect();
         let id = if !chunks.is_empty() {
@@ -142,12 +156,22 @@ fn main() {
         b.rating_deviation += record.rating_deviation;
         b.attempts += record.attempts;
 
-        if highest_rated.rating < record.rating {
-            highest_rated = record.clone();
-        }
-        if lowest_rated.rating > record.rating {
-            lowest_rated = record.clone();
-        }
+        match record.rating.cmp(&highest_rated.rating) {
+            Ordering::Greater => {
+                highest_rated = record.clone();
+                highest_count = 1
+            }
+            Ordering::Less => {}
+            Ordering::Equal => highest_count += 1,
+        };
+        match record.rating.cmp(&lowest_rated.rating) {
+            Ordering::Greater => {}
+            Ordering::Less => {
+                lowest_rated = record.clone();
+                lowest_count = 1
+            }
+            Ordering::Equal => lowest_count += 1,
+        };
         if least_popular.popularity > record.popularity {
             least_popular = record.clone();
         }
@@ -158,7 +182,7 @@ fn main() {
             least_played = record.clone();
         }
 
-        if record.rating >= 2900 || record.rating < 550 {
+        if record.rating >= 3100 || record.rating < 400 {
             println!(
                 "[{}] {} / rating: {} / attempts: {} / deviation: {}",
                 count, record.id, record.rating, record.attempts, record.rating_deviation
@@ -179,12 +203,12 @@ fn main() {
         (total_attempts as f64) / count as f64
     );
     println!(
-        "Highest rated: {} {} {}",
-        highest_rated.id, highest_rated.rating, highest_rated.attempts
+        "Highest rated: {} {} (x{}) {}",
+        highest_rated.id, highest_rated.rating, highest_count, highest_rated.attempts
     );
     println!(
-        "Lowest rated: {} {} {}",
-        lowest_rated.id, lowest_rated.rating, lowest_rated.attempts
+        "Lowest rated: {} {} (x{}) {}",
+        lowest_rated.id, lowest_rated.rating, lowest_count, lowest_rated.attempts
     );
     println!(
         "Most played: {} {} {}",
@@ -199,17 +223,18 @@ fn main() {
     let mut all_zeros = true;
     println!("rating, count, attempts, deviation, attempts/puzzle, deviation/puzzle");
     for (bi, b) in buckets.into_iter().enumerate() {
-        if !(all_zeros && b.count == 0) {
-            all_zeros = false;
-            println!(
-                "{}, {}, {}, {}, {}, {}",
-                bi as u64 * bucket_range,
-                b.count,
-                b.attempts,
-                b.rating_deviation,
-                b.attempts as f64 / b.count as f64,
-                b.rating_deviation as f64 / b.count as f64
-            );
+        if all_zeros && b.count == 0 {
+            continue;
         }
+        all_zeros = false;
+        println!(
+            "{}, {}, {}, {}, {}, {}",
+            bi as u64 * bucket_range,
+            b.count,
+            b.attempts,
+            b.rating_deviation,
+            b.attempts as f64 / b.count as f64,
+            b.rating_deviation as f64 / b.count as f64
+        );
     }
 }
