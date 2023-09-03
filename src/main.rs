@@ -42,13 +42,14 @@ fn main() {
     let mut total_attempts: u64 = 0;
     let mut buckets = Vec::<Bucket>::new();
     let bucket_range = 100;
-    let mut highest_rated: PuzzleEntry = PuzzleEntry::default();
+    let mut highest_rated = PuzzleEntry::default();
     let mut lowest_rated = PuzzleEntry {
         rating: u64::MAX,
         ..Default::default()
     };
     let mut highest_count: u64 = 0;
     let mut lowest_count: u64 = 0;
+    let mut skipped_count: u64 = 0;
     let mut least_popular = PuzzleEntry {
         popularity: i64::MAX,
         ..Default::default()
@@ -91,6 +92,10 @@ fn main() {
         } else {
             0
         };
+        if rating_deviation > 400 {
+            skipped_count += 1;
+            continue;
+        }
 
         let record = PuzzleEntry {
             id,
@@ -140,7 +145,7 @@ fn main() {
             least_played = record.clone();
         }
 
-        if record.rating >= 3100 || record.rating < 400 {
+        if record.rating >= 3100 {
             println!(
                 "[{}] {} / rating: {} / attempts: {} / deviation: {}",
                 count, record.id, record.rating, record.attempts, record.rating_deviation
@@ -150,6 +155,7 @@ fn main() {
         count += 1;
     }
 
+    println!("Count: {} (+{})", count, skipped_count);
     println!(
         "Rating: {} ({} avg)",
         total_ratings,
@@ -161,12 +167,20 @@ fn main() {
         (total_attempts as f64) / count as f64
     );
     println!(
-        "Highest rated: {} {} (x{}) {}",
-        highest_rated.id, highest_rated.rating, highest_count, highest_rated.attempts
+        "Highest rated: {} {} (x{}) {} {}",
+        highest_rated.id,
+        highest_rated.rating,
+        highest_count,
+        highest_rated.attempts,
+        highest_rated.rating_deviation
     );
     println!(
-        "Lowest rated: {} {} (x{}) {}",
-        lowest_rated.id, lowest_rated.rating, lowest_count, lowest_rated.attempts
+        "Lowest rated: {} {} (x{}) {} {}",
+        lowest_rated.id,
+        lowest_rated.rating,
+        lowest_count,
+        lowest_rated.attempts,
+        lowest_rated.rating_deviation
     );
     println!(
         "Most played: {} {} {}",
