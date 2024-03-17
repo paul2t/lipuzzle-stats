@@ -165,7 +165,12 @@ fn main() {
         count += 1;
     }
 
-    println!("Count: {} (+{})", count, skipped_count);
+    println!(
+        "Count: {} (+{} = {})",
+        count,
+        skipped_count,
+        count + skipped_count
+    );
     println!(
         "Rating: {} ({} avg)",
         total_ratings,
