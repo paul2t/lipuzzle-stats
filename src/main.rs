@@ -32,19 +32,20 @@ fn main() {
     let args: Vec<String> = env::args().collect();
     if args.len() < 2 {
         eprintln!("Usage: {} <FILEPATH>", args[0]);
+        eprintln!("Usage: {} columns <FILEPATH> [PuzzleId,FEN,Moves,Rating,RatingDeviation,Popularity,NbPlays,Themes,GameUrl,OpeningTags]", args[0]);
         return;
     }
 
     let keyword = &args[1];
 
-    if keyword == "filter" {
-        do_filter(&args);
+    if keyword == "columns" {
+        do_columns(&args);
     } else {
         do_stats(&args);
     }
 }
 
-fn do_filter(args: &[String]) {
+fn do_columns(args: &[String]) {
     if args.len() < 3 {
         eprintln!("Usage: {} {} <FILEPATH> [PuzzleId,FEN,Moves,Rating,RatingDeviation,Popularity,NbPlays,Themes,GameUrl,OpeningTags]", args[0], args[1]);
         return;
@@ -67,7 +68,7 @@ fn do_filter(args: &[String]) {
     let file_stem = file_stem.to_string_lossy().to_string();
 
     out_path.pop();
-    out_path.push(format!("{}_filtered", file_stem));
+    out_path.push(format!("{}_columns", file_stem));
     out_path.set_extension("csv");
 
     let fo = File::create(&out_path);
