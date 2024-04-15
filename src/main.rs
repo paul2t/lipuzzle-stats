@@ -57,6 +57,8 @@ fn main() {
 
     if keyword == "columns" {
         do_columns(&args);
+    } else if keyword == "compare" {
+        do_compare(&args);
     } else {
         do_stats(&args);
     }
@@ -131,6 +133,16 @@ impl Iterator for PuzzlesReader {
 
         Some(puzzle)
     }
+}
+
+fn do_compare(args: &[String]) {
+    if args.len() < 4 {
+        eprintln!("Usage: {} {} <FILEPATH> <FILEPATH>", args[0], args[1]);
+        return;
+    }
+
+    let path_a = &args[2];
+    let path_b = &args[3];
 }
 
 fn do_columns(args: &[String]) {
