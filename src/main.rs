@@ -8,8 +8,25 @@ use std::collections::HashMap;
 use std::env;
 use std::error::Error;
 use std::fs::File;
-use std::io::{self, BufRead, BufReader, BufWriter, Write};
+use std::io::{self, BufRead, BufReader, BufWriter, Lines, Write};
 use std::path::PathBuf;
+use std::str::FromStr;
+use std::str::Split;
+use strum::{EnumString, IntoStaticStr};
+
+#[derive(Debug, PartialEq, Eq, EnumString, IntoStaticStr)]
+enum PuzzleColumns {
+    PuzzleId,
+    FEN,
+    Moves,
+    Rating,
+    RatingDeviation,
+    Popularity,
+    NbPlays,
+    Themes,
+    GameUrl,
+    OpeningTags,
+}
 
 #[derive(Deserialize, Default, Clone)]
 struct PuzzleEntry {
@@ -42,6 +59,77 @@ fn main() {
         do_columns(&args);
     } else {
         do_stats(&args);
+    }
+}
+
+struct PuzzlesReader {
+    lines: Lines<BufReader<File>>,
+    columns_ids: Vec<Option<PuzzleColumns>>,
+}
+
+impl PuzzlesReader {
+    fn new(path: &str) -> PuzzlesReader {
+        let f = File::open(path).unwrap();
+        let reader = BufReader::new(f);
+        let mut lines = reader.lines();
+
+        let Some(Ok(first_line)) = lines.next() else {
+            eprintln!("Error reading first line: {}", &path);
+            return PuzzlesReader {
+                lines,
+                columns_ids: Vec::new(),
+            };
+        };
+
+        let mut columns_names = Vec::new();
+        for c in first_line.split(',') {
+            columns_names.push(c.to_string());
+        }
+
+        let columns_ids = columns_names
+            .iter()
+            .map(|c| PuzzleColumns::from_str(c).ok())
+            .collect();
+
+        PuzzlesReader { lines, columns_ids }
+    }
+}
+
+impl Iterator for PuzzlesReader {
+    type Item = PuzzleEntry;
+
+    fn next(&mut self) -> Option<PuzzleEntry> {
+        let Some(Ok(line)) = self.lines.next() else {
+            return None;
+        };
+        let mut chunks = line.split(',');
+        let mut puzzle = PuzzleEntry::default();
+
+        for c in self.columns_ids.iter() {
+            let Some(chunk) = chunks.next() else {
+                continue;
+            };
+            let Some(c) = c else {
+                continue;
+            };
+
+            match *c {
+                PuzzleColumns::PuzzleId => puzzle.id = chunk.to_owned(),
+                PuzzleColumns::FEN => {}
+                PuzzleColumns::Moves => {}
+                PuzzleColumns::Rating => puzzle.rating = chunk.parse::<u64>().unwrap_or(0),
+                PuzzleColumns::RatingDeviation => {
+                    puzzle.rating_deviation = chunk.parse::<u64>().unwrap_or(0)
+                }
+                PuzzleColumns::Popularity => puzzle.popularity = chunk.parse::<i64>().unwrap_or(0),
+                PuzzleColumns::NbPlays => puzzle.attempts = chunk.parse::<u64>().unwrap_or(0),
+                PuzzleColumns::Themes => {}
+                PuzzleColumns::GameUrl => {}
+                PuzzleColumns::OpeningTags => {}
+            }
+        }
+
+        Some(puzzle)
     }
 }
 
@@ -149,8 +237,7 @@ fn do_stats(args: &[String]) {
     }
 
     let path = &args[1];
-    let f = File::open(path).unwrap();
-    let reader = BufReader::new(f);
+    let puzzles = PuzzlesReader::new(path);
 
     let mut count = 0;
     let mut total_ratings: u64 = 0;
@@ -176,50 +263,11 @@ fn do_stats(args: &[String]) {
         ..Default::default()
     };
 
-    for line in reader.lines().skip(1) {
-        let line = line.unwrap();
-        let chunks: Vec<&str> = line.split(',').collect();
-        let id = if !chunks.is_empty() {
-            chunks[0].to_string()
-        } else {
-            String::new()
-        };
-        let rating = if chunks.len() > 3 {
-            chunks[3].parse::<u64>().unwrap_or(0)
-        } else {
-            0
-        };
-        let rating_deviation = if chunks.len() > 4 {
-            chunks[4].parse::<u64>().unwrap_or(0)
-        } else {
-            0
-        };
-        let popularity = if chunks.len() > 5 {
-            chunks[5].parse::<i64>().unwrap_or(0)
-        } else {
-            0
-        };
-        let attempts = if chunks.len() > 6 {
-            chunks[6]
-                .parse::<i64>()
-                .unwrap_or(0)
-                .try_into()
-                .unwrap_or(0)
-        } else {
-            0
-        };
-        if rating_deviation > 400 {
+    for record in puzzles {
+        if record.rating_deviation > 400 {
             skipped_count += 1;
             continue;
         }
-
-        let record = PuzzleEntry {
-            id,
-            rating,
-            rating_deviation,
-            popularity,
-            attempts,
-        };
 
         total_ratings += record.rating;
         total_attempts += record.attempts;
@@ -263,7 +311,7 @@ fn do_stats(args: &[String]) {
 
         let mut insert_index: Option<usize> = None;
         for (pi, p) in ten_highest_rated.iter().enumerate() {
-            if p.rating < rating {
+            if p.rating < record.rating {
                 insert_index = Some(pi);
                 break;
             }
