@@ -4,10 +4,12 @@ extern crate serde;
 
 use serde::Deserialize;
 use std::cmp::Ordering;
+use std::collections::HashMap;
 use std::env;
 use std::error::Error;
 use std::fs::File;
-use std::io::{self, BufRead, BufReader};
+use std::io::{self, BufRead, BufReader, BufWriter, Write};
+use std::path::PathBuf;
 
 #[derive(Deserialize, Default, Clone)]
 struct PuzzleEntry {
@@ -28,6 +30,118 @@ struct Bucket {
 
 fn main() {
     let args: Vec<String> = env::args().collect();
+    if args.len() < 2 {
+        eprintln!("Usage: {} <FILEPATH>", args[0]);
+        return;
+    }
+
+    let keyword = &args[1];
+
+    if keyword == "filter" {
+        do_filter(&args);
+    } else {
+        do_stats(&args);
+    }
+}
+
+fn do_filter(args: &[String]) {
+    if args.len() < 3 {
+        eprintln!("Usage: {} {} <FILEPATH> [PuzzleId,FEN,Moves,Rating,RatingDeviation,Popularity,NbPlays,Themes,GameUrl,OpeningTags]", args[0], args[1]);
+        return;
+    }
+
+    let path = &args[2];
+    let column_args = if args.len() > 3 {
+        &args[3][..]
+    } else {
+        "PuzzleId,Rating,RatingDeviation,Popularity,NbPlays"
+    };
+    let f = File::open(path).unwrap();
+    let reader = BufReader::new(f);
+
+    let mut out_path = PathBuf::from(path);
+    let Some(file_stem) = out_path.file_stem() else {
+        eprintln!("No filename found in {}", path);
+        return;
+    };
+    let file_stem = file_stem.to_string_lossy().to_string();
+
+    out_path.pop();
+    out_path.push(format!("{}_filtered", file_stem));
+    out_path.set_extension("csv");
+
+    let fo = File::create(&out_path);
+    if let Err(err) = &fo {
+        eprintln!("{:?}", err);
+    }
+    let Ok(fo) = fo else {
+        eprintln!("Unable to open file {}", out_path.to_string_lossy());
+        return;
+    };
+    let mut writer = BufWriter::new(fo);
+
+    let mut count = 0;
+
+    let mut lines = reader.lines();
+
+    let Some(Ok(line)) = lines.next() else {
+        eprintln!("Error reading first line: {}", &path);
+        return;
+    };
+
+    let mut column_names = HashMap::new();
+    for (i, c) in line.split(',').enumerate() {
+        column_names.insert(c.to_string(), i);
+    }
+
+    let mut columns = Vec::new();
+    let mut out_first_line = String::new();
+
+    for c in column_args.split(',') {
+        out_first_line.push_str(c);
+        out_first_line.push(',');
+        let Some(i) = column_names.get(c) else {
+            columns.push(usize::MAX);
+            if c.is_empty() {
+                continue;
+            }
+            eprintln!("Unable to find column '{c}'");
+            eprintln!("Here are the columns: {}", line);
+            continue;
+        };
+
+        columns.push(*i);
+    }
+    if !out_first_line.is_empty() {
+        out_first_line.remove(out_first_line.len() - 1);
+    }
+    out_first_line.push('\n');
+    _ = writer.write(out_first_line.as_bytes());
+
+    for line in lines {
+        let line = line.unwrap();
+        let chunks: Vec<&str> = line.split(',').collect();
+        if chunks.is_empty() {
+            continue;
+        }
+
+        for (i, c) in columns.iter().enumerate() {
+            if let Some(v) = chunks.get(*c) {
+                _ = writer.write(v.as_bytes());
+            };
+            if i != columns.len() - 1 {
+                _ = writer.write(b",");
+            }
+        }
+        _ = writer.write(b"\n");
+
+        count += 1;
+    }
+
+    println!("Done: {count} puzzles.");
+}
+
+fn do_stats(args: &[String]) {
     if args.len() < 2 {
         eprintln!("Usage: {} <FILEPATH>", args[0]);
         return;
